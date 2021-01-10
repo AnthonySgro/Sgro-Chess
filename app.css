@@ -1,0 +1,92 @@
+html {
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background-color: #073b4c;
+    color: #f1faee;
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    min-height: 100vh;
+    padding-top: 20px;
+}
+
+img {
+    height: auto;
+    width: auto;
+    cursor: pointer;
+}
+
+
+.sgrochess {
+    background-color: #ffd166;
+    border-radius: 10px;
+    padding: 25px 25px;
+    width: 100%;
+    max-width: 489px;
+    flex-direction: column;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.chessboard-container {
+    display: flex;
+}
+
+.chessboard  {
+    /* border-collapse: collapse;
+    border-spacing: 0; */
+    border: 1px #073b4c;
+}
+
+.chessboard td{
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    overflow: hidden;
+    /* padding: 30px 30px; */
+    word-break: normal;
+}
+
+.chessboard th{
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: normal;
+    overflow: hidden;
+    /* padding: 30px 30px; */
+    word-break: normal;
+}
+
+.chessboard .chess-tile {
+    text-align: left;
+    vertical-align: top;
+}
+
+.btn {
+    box-shadow: 0 7px 10px -9px rgba(0,0,0,0.62);
+    background-color: #06d6a0;
+    border: 1px solid transparent;
+    border-radius: 5em;
+    color: #f1faee;
+    outline: none;
+    padding: 5px 10px; 
+    margin: 10px;
+    width: 20%;
+}
+
+.btn:hover, .btn:focus {
+    transition: background-color 200ms ease-in-out;
+    background-color: #05a77c;
+    cursor: pointer;
+}
+
+.btn:active {
+    transition: background-color 0ms;
+    transform: translateY(0.1em);
+    background-color: #048b67;
+}
+
+.chessboard td:active, .chessboard th:active  {
+    filter: brightness(35%);
+}
