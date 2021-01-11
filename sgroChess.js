@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 class Piece {
-    constructor(color, chessTile) {
+    constructor(color, chessTile, chessboard) {
         this.white = color;
         if (color === true) {
             this.color = 'white';
@@ -11,6 +11,7 @@ class Piece {
         this.currentChessTile = chessTile;
         this.currentChessTile.piece = this;
         this.validMoves = [];
+        this.chessboard = chessboard;
     }
 
     displayPiece() {
@@ -23,18 +24,94 @@ class Piece {
     }
 
     movePiece(chessTile) {
+
+        //if you move a piece, all same-colored pawns are invulnerable to enPassant 
+        //(except THIS piece if it is a pawn!)
+        if (this.color === 'white') {
+            chessboard.whitePieces.forEach(piece => {
+                if (piece instanceof Pawn) {
+                    if (this !== piece) {
+                        piece.vulnerableToEnPassant = false;
+                    }
+                }
+            });
+        } else {
+            chessboard.blackPieces.forEach(piece => {
+                if (piece instanceof Pawn) {
+                    if (this !== piece) {
+                        piece.vulnerableToEnPassant = false;
+                    }
+                }
+            });
+        }
+        
+        //check for en-passant
+        if (this instanceof Pawn) {
+            if (this.color === 'white') {
+
+                //check for enPassant Vulnerability
+                if (this.currentChessTile.numCoord[1] === 1 && chessTile.numCoord[1] === 3) {
+                    this.vulnerableToEnPassant = true;
+                } else {
+                    this.vulnerableToEnPassant = false;
+                }
+            } else {
+                if (this.currentChessTile.numCoord[1] === 6 && chessTile.numCoord[1] === 4) {
+                    this.vulnerableToEnPassant = true;
+                } else {
+                    this.vulnerableToEnPassant = false;
+                }
+            }
+            console.log(this.vulnerableToEnPassant);
+        }
+
+        //remove piece from this square
         this.hidePiece();
         this.currentChessTile.piece = null;
         this.currentChessTile.piecePresent = false;
 
         //check for castling
         if (this instanceof King) {
-            //if short castle
-            if (this.currentChessTile.adjacentTile('right').adjacentTile('right') == chessTile) {
-                this.currentChessTile.adjacentTile('right').adjacentTile('right').adjacentTile('right').piece.movePiece(this.currentChessTile.adjacentTile('right'));
-            //long castle
-            } else if (this.currentChessTile.adjacentTile('left').adjacentTile('left') == chessTile) {
-                this.currentChessTile.adjacentTile('left').adjacentTile('left').adjacentTile('left').adjacentTile('left').piece.movePiece(this.currentChessTile.adjacentTile('left'));
+            if (this.shortCastlingAvailable === true) {
+                //if short castle
+                if (this.currentChessTile.adjacentTile('right').adjacentTile('right') == chessTile) {
+                    //moves kingside rook to correct location
+                    this.currentChessTile.adjacentTile('right').adjacentTile('right').adjacentTile('right').piece.movePiece(this.currentChessTile.adjacentTile('right'));
+                    this.shortCastlingAvailable = false;
+                    this.longCastlingAvailable = false;
+                } else if (this.longCastlingAvailable === true) {
+                    //long castle
+                    if (this.currentChessTile.adjacentTile('left').adjacentTile('left') == chessTile) {
+                        //moves queenside rook to correct location
+                        this.currentChessTile.adjacentTile('left').adjacentTile('left').adjacentTile('left').adjacentTile('left').piece.movePiece(this.currentChessTile.adjacentTile('left'));
+                        this.shortCastlingAvailable = false;
+                        this.longCastlingAvailable = false;
+                    }
+                }
+            }
+        } 
+
+        //check for pawn on last rank
+        if (this instanceof Pawn) {
+            //if on last rank
+            if (chessTile.numCoord[1] === 0 || chessTile.numCoord[1] === 7) {
+                this.queened = true;
+                let queenedPawn = new Queen(this.white, chessTile, chessboard);
+
+                if (this.white === true) {
+                    chessboard.whitePieces.push(queenedPawn);
+                    chessboard.whitePieces.splice(chessboard.whitePieces.indexOf(this), 1);
+                } else {
+                    chessboard.blackPieces.push(queenedPawn);
+                    chessboard.whitePieces.splice(chessboard.blackPieces.indexOf(this), 1);
+                }
+
+                queenedPawn.currentChessTile.piece = queenedPawn;
+                queenedPawn.currentChessTile.piecePresent = true;
+                queenedPawn.validMoves = [];
+                queenedPawn.displayPiece();
+                queenedPawn.hasMoved = true;
+                return;
             }
         }
 
@@ -56,6 +133,10 @@ class Pawn extends Piece {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-pawn.png`;
         this.moveTwoAvailable = true;
+        this.queened = false;
+        this.justMovedTwo = false;
+        this.vulnerableToEnPassant = false;
+        this.justPerformedEnPassant = false;
     }
 
     //finds all valid chess tiles to move to, returns array.
@@ -79,18 +160,36 @@ class Pawn extends Piece {
 
             let upLeft;
             let upRight;
+            let left = this.currentChessTile.adjacentTile('left');
+            let right = this.currentChessTile.adjacentTile('right');
             //take opponent's piece if diagonal up
             if (this.currentChessTile.adjacentTile('up-left') !== undefined) {
                 upLeft = this.currentChessTile.adjacentTile('up-left');
-                if (upLeft.piecePresent === true && upLeft.color != this.color) {
+                if (upLeft.piecePresent === true && upLeft.color !== this.color) {
                     this.validMoves.push(upLeft);
-                }    
+
+                //adds capture if enpassant available
+                } else if (left !== undefined) {
+                    if (left.piece instanceof Pawn) {
+                        if (left.piece.color !== this.color && left.piece.vulnerableToEnPassant === true) {
+                            this.validMoves.push(upLeft);
+                        }
+                    }
+                }
             }
 
             if (this.currentChessTile.adjacentTile('up-right') !== undefined) {
                 upRight = this.currentChessTile.adjacentTile('up-right');
                 if (upRight.piecePresent === true && upRight.color != this.color) {
                     this.validMoves.push(upRight);
+
+                //adds capture if enpassant available
+                } else if (right !== undefined) {
+                    if (right.piece instanceof Pawn) {
+                        if (right.piece.color !== this.color && right.piece.vulnerableToEnPassant === true) {
+                            this.validMoves.push(upRight);
+                        }
+                    }
                 }
             }
 
@@ -112,18 +211,33 @@ class Pawn extends Piece {
 
             let downLeft;
             let downRight;
+            let left = this.currentChessTile.adjacentTile('left');
+            let right = this.currentChessTile.adjacentTile('right');
+
             //take opponent's piece if diagonal down
             if (this.currentChessTile.adjacentTile('down-left') !== undefined) {
                 downLeft = this.currentChessTile.adjacentTile('down-left');
                 if (downLeft.piecePresent === true && downLeft.color != this.color) {
                     this.validMoves.push(downLeft);
+                } else if (left !== undefined) {
+                    if (left.piece instanceof Pawn) {
+                        if (left.piece.color !== this.color && left.piece.vulnerableToEnPassant === true) {
+                            this.validMoves.push(downLeft);
+                        }
+                    }
                 }
             }
             if (this.currentChessTile.adjacentTile('down-right') !== undefined) {
                 downRight = this.currentChessTile.adjacentTile('down-right');
                 if (downRight.piecePresent === true && downRight.color != this.color) {
                     this.validMoves.push(downRight);
-                }    
+                } else if (right !== undefined) {
+                    if (right.piece instanceof Pawn) {
+                        if (right.piece.color !== this.color && right.piece.vulnerableToEnPassant === true) {
+                            this.validMoves.push(downRight);
+                        }
+                    }
+                } 
             }
         }
 
@@ -141,7 +255,9 @@ class Pawn extends Piece {
             }
         });
 
-        this.validMoves = arr;
+        this.validMoves = arr.filter((tile, index) => {
+            return arr.indexOf(tile) === index;
+        });
         //console.log(this.validMoves);
         return this.validMoves;
     }
@@ -867,8 +983,8 @@ class King extends Piece {
     constructor(color, chessTile) {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-king.png`;
-        this.shortCastlingAvailable = false;
-        this.longCastlingAvailable = false;
+        this.shortCastlingAvailable = true;
+        this.longCastlingAvailable = true;
     }
 
     findValidMoves() {
@@ -1011,6 +1127,8 @@ chessTile.prototype.adjacentTile = function(str) {
 class Chessboard {
     constructor() {
         this.board = [];
+        this.whitePieces = [];
+        this.blackPieces = [];
         this.pieces = [];
     }
 
@@ -1048,6 +1166,11 @@ class Chessboard {
         ] */
 
     }
+
+    updatePieces() {
+        this.pieces = [];
+        this.pieces = this.pieces.concat(this.whitePieces, this.blackPieces);
+    }
 }
 
 function initChessboard() {
@@ -1079,46 +1202,51 @@ function convertNotation(str) {
 }
 
 //<--------------------------HTML ISH---------------------------->
-let chessboard = initChessboard();
+let chessboard;
 
 //initialize game
 let enterInitBtn = document.getElementById('init-game');
 enterInitBtn.addEventListener('click', function() {
+    chessboard = initChessboard();
 
     //on load
-    let whiteRook1 = new Rook(true, chessboard.board[0][0]);
-    let whiteKnight1 = new Knight(true, chessboard.board[1][0]);
-    let whiteBishop1 = new Bishop(true, chessboard.board[2][0]);
-    let whiteQueen1 = new Queen(true, chessboard.board[3][0]);
-    let whiteKing = new King(true, chessboard.board[4][0]);
-    let whiteBishop2 = new Bishop(true, chessboard.board[5][0]);
-    let whiteKnight2 = new Knight(true, chessboard.board[6][0]);
-    let whiteRook2 = new Rook(true, chessboard.board[7][0]);
-    let whitePawn1 = new Pawn(true, chessboard.board[0][1]);
-    let whitePawn2 = new Pawn(true, chessboard.board[1][1]);
-    let whitePawn3 = new Pawn(true, chessboard.board[2][1]);
-    let whitePawn4 = new Pawn(true, chessboard.board[3][1]);
-    let whitePawn5 = new Pawn(true, chessboard.board[4][1]);
-    let whitePawn6 = new Pawn(true, chessboard.board[5][1]);
-    let whitePawn7 = new Pawn(true, chessboard.board[6][1]);
-    let whitePawn8 = new Pawn(true, chessboard.board[7][1]);
+    let whiteRook1 = new Rook(true, chessboard.board[0][0], chessboard);
+    let whiteKnight1 = new Knight(true, chessboard.board[1][0], chessboard);
+    let whiteBishop1 = new Bishop(true, chessboard.board[2][0], chessboard);
+    let whiteQueen1 = new Queen(true, chessboard.board[3][0], chessboard);
+    let whiteKing = new King(true, chessboard.board[4][0], chessboard);
+    let whiteBishop2 = new Bishop(true, chessboard.board[5][0], chessboard);
+    let whiteKnight2 = new Knight(true, chessboard.board[6][0], chessboard);
+    let whiteRook2 = new Rook(true, chessboard.board[7][0], chessboard);
+    let whitePawn1 = new Pawn(true, chessboard.board[0][1], chessboard);
+    let whitePawn2 = new Pawn(true, chessboard.board[1][1], chessboard);
+    let whitePawn3 = new Pawn(true, chessboard.board[2][1], chessboard);
+    let whitePawn4 = new Pawn(true, chessboard.board[3][1], chessboard);
+    let whitePawn5 = new Pawn(true, chessboard.board[4][1], chessboard);
+    let whitePawn6 = new Pawn(true, chessboard.board[5][1], chessboard);
+    let whitePawn7 = new Pawn(true, chessboard.board[6][1], chessboard);
+    let whitePawn8 = new Pawn(true, chessboard.board[7][1], chessboard);
 
-    let blackRook1 = new Rook(false, chessboard.board[0][7]);
-    let blackKnight1 = new Knight(false, chessboard.board[1][7]);
-    let blackBishop1 = new Bishop(false, chessboard.board[2][7]);
-    let blackQueen1 = new Queen(false, chessboard.board[3][7]);
-    let blackKing = new King(false, chessboard.board[4][7]);
-    let blackBishop2 = new Bishop(false, chessboard.board[5][7]);
-    let blackKnight2 = new Knight(false, chessboard.board[6][7]);
-    let blackRook2 = new Rook(false, chessboard.board[7][7]);
-    let blackPawn1 = new Pawn(false, chessboard.board[0][6]);
-    let blackPawn2 = new Pawn(false, chessboard.board[1][6]);
-    let blackPawn3 = new Pawn(false, chessboard.board[2][6]);
-    let blackPawn4 = new Pawn(false, chessboard.board[3][6]);
-    let blackPawn5 = new Pawn(false, chessboard.board[4][6]);
-    let blackPawn6 = new Pawn(false, chessboard.board[5][6]);
-    let blackPawn7 = new Pawn(false, chessboard.board[6][6]);
-    let blackPawn8 = new Pawn(false, chessboard.board[7][6]);
+    let blackRook1 = new Rook(false, chessboard.board[0][7], chessboard);
+    let blackKnight1 = new Knight(false, chessboard.board[1][7], chessboard);
+    let blackBishop1 = new Bishop(false, chessboard.board[2][7], chessboard);
+    let blackQueen1 = new Queen(false, chessboard.board[3][7], chessboard);
+    let blackKing = new King(false, chessboard.board[4][7], chessboard);
+    let blackBishop2 = new Bishop(false, chessboard.board[5][7], chessboard);
+    let blackKnight2 = new Knight(false, chessboard.board[6][7], chessboard);
+    let blackRook2 = new Rook(false, chessboard.board[7][7], chessboard);
+    let blackPawn1 = new Pawn(false, chessboard.board[0][6], chessboard);
+    let blackPawn2 = new Pawn(false, chessboard.board[1][6], chessboard);
+    let blackPawn3 = new Pawn(false, chessboard.board[2][6], chessboard);
+    let blackPawn4 = new Pawn(false, chessboard.board[3][6], chessboard);
+    let blackPawn5 = new Pawn(false, chessboard.board[4][6], chessboard);
+    let blackPawn6 = new Pawn(false, chessboard.board[5][6], chessboard);
+    let blackPawn7 = new Pawn(false, chessboard.board[6][6], chessboard);
+    let blackPawn8 = new Pawn(false, chessboard.board[7][6], chessboard);
+
+    chessboard.whitePieces = [whiteRook1, whiteKnight1, whiteBishop1, whiteQueen1, whiteKing, whiteBishop2, whiteKnight2, whiteRook2, whitePawn1, whitePawn2, whitePawn3, whitePawn4, whitePawn5, whitePawn6, whitePawn7, whitePawn8]
+    chessboard.blackPieces = [blackRook1, blackKnight1, blackBishop1, blackQueen1, blackKing, blackBishop2, blackKnight2, blackRook2, blackPawn1, blackPawn2, blackPawn3, blackPawn4, blackPawn5, blackPawn6, blackPawn7, blackPawn8]
+    chessboard.updatePieces();
 
     //testing...
     whiteRook1.displayPiece();
@@ -1166,11 +1294,10 @@ let piece;
 document.addEventListener('click', function(e) {
     e = e || window.event;
     var target = e.target
-    
-    let id = convertNotation(target.id[0] + target.id[1]);
-    
+        
     //if you click an image...
     if (target.nodeName === 'IMG') {
+        let id = convertNotation(target.id[0] + target.id[1]);
 
         //and we are in the selecting phase
         if (selectingOrMoving === false) {
@@ -1186,15 +1313,19 @@ document.addEventListener('click', function(e) {
 
         //if moving phase, move piece to wherever you clicked
         } else {
+            selectingOrMoving = !selectingOrMoving;
             tile = chessboard.board[id[0]][id[1]];
             let validMove = piece.findValidMoves().includes(tile);
             if (validMove) {
                 piece.movePiece(chessboard.board[id[0]][id[1]]);
-                displayFeedback('Selecting Phase');
             }
-            selectingOrMoving = !selectingOrMoving; 
+            displayFeedback('Selecting Phase');
+             
 
         }  
+    } else {
+        selectingOrMoving = false;
+        displayFeedback('Selecting Phase');
     }
 }, false);
 

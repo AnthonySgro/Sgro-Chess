@@ -23,8 +23,7 @@ img {
     background-color: #ffd166;
     border-radius: 10px;
     padding: 25px 25px;
-    width: 100%;
-    max-width: 489px;
+    max-width: 532px;
     flex-direction: column;
     text-align: center;
     text-transform: uppercase;
