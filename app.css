@@ -19,7 +19,6 @@ img {
     cursor: pointer;
 }
 
-
 .sgrochess {
     background-color: #ffd166;
     border-radius: 10px;
@@ -73,6 +72,25 @@ img {
     padding: 5px 10px; 
     margin: 10px;
     width: 20%;
+}
+
+#user-feedback {
+    box-shadow: 0 7px 10px -9px rgba(0,0,0,0.62);
+    background-color: #f1faee;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    color: black;
+    outline: none;
+    padding: 0px 0px;
+    margin: 10px;
+    width: 20%;
+    display: inline-block;
+    overflow-wrap: break-word;
+    font-size: 8px;
+}
+
+#init-game {
+    display: inline-block;
 }
 
 .btn:hover, .btn:focus {
