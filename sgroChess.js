@@ -7,6 +7,7 @@ class Piece {
         } else {
             this.color = 'black';
         }
+        this.hasMoved = false;
         this.currentChessTile = chessTile;
         this.currentChessTile.piece = this;
         this.validMoves = [];
@@ -25,11 +26,24 @@ class Piece {
         this.hidePiece();
         this.currentChessTile.piece = null;
         this.currentChessTile.piecePresent = false;
+
+        //check for castling
+        if (this instanceof King) {
+            //if short castle
+            if (this.currentChessTile.adjacentTile('right').adjacentTile('right') == chessTile) {
+                this.currentChessTile.adjacentTile('right').adjacentTile('right').adjacentTile('right').piece.movePiece(this.currentChessTile.adjacentTile('right'));
+            //long castle
+            } else if (this.currentChessTile.adjacentTile('left').adjacentTile('left') == chessTile) {
+                this.currentChessTile.adjacentTile('left').adjacentTile('left').adjacentTile('left').adjacentTile('left').piece.movePiece(this.currentChessTile.adjacentTile('left'));
+            }
+        }
+
         this.currentChessTile = chessTile;
         this.currentChessTile.piece = this;
         this.currentChessTile.piecePresent = true;
         this.validMoves = [];
         this.displayPiece();
+        this.hasMoved = true;
     }
 
     initializePiece() {
@@ -205,6 +219,7 @@ class Knight extends Piece {
         });
 
         this.validMoves = arr2;
+        
         //console.log(this.validMoves);
         return this.validMoves;
     }
@@ -852,6 +867,8 @@ class King extends Piece {
     constructor(color, chessTile) {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-king.png`;
+        this.shortCastlingAvailable = false;
+        this.longCastlingAvailable = false;
     }
 
     findValidMoves() {
@@ -891,9 +908,39 @@ class King extends Piece {
             }
         });
 
-        this.validMoves = arr;
-        //console.log(this.validMoves);
 
+        //allows castling 
+        //if king hasn't moved
+        if (this.hasMoved === false) {
+            //short castling
+            //if rook is there
+            if (this.currentChessTile.adjacentTile('right').adjacentTile('right').adjacentTile('right').piece !== null) {
+                //and rook hasn't moved
+                if (this.currentChessTile.adjacentTile('right').adjacentTile('right').adjacentTile('right').piece.hasMoved === false) {
+                    //and no pieces are in the way
+                    if (this.currentChessTile.adjacentTile('right').piecePresent === false && this.currentChessTile.adjacentTile('right').adjacentTile('right').piecePresent === false) {
+                        arr.push(this.currentChessTile.adjacentTile('right').adjacentTile('right'));
+                        this.shortCastlingAvailable = true;
+                    }
+                }
+            }
+
+            //long castling
+            if (this.currentChessTile.adjacentTile('left').adjacentTile('left').adjacentTile('left').adjacentTile('left').piece !== null) {
+                if (this.currentChessTile.adjacentTile('left').adjacentTile('left').adjacentTile('left').adjacentTile('left').piece.hasMoved === false) {
+                    if (this.currentChessTile.adjacentTile('left').piecePresent === false && this.currentChessTile.adjacentTile('left').adjacentTile('left').piecePresent === false && this.currentChessTile.adjacentTile('left').adjacentTile('left').adjacentTile('left').piecePresent === false) {
+                        arr.push(this.currentChessTile.adjacentTile('left').adjacentTile('left'));
+                        this.longCastlingAvailable = true;
+                    }
+                }
+            }         
+        }
+    
+        this.validMoves = arr.filter((tile, index) => {
+            return arr.indexOf(tile) === index;
+        });
+        
+        //console.log(this.validMoves);
         return this.validMoves;
     }
 }
