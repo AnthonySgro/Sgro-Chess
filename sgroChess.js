@@ -24,7 +24,6 @@ class Piece {
     }
 
     movePiece(chessTile) {
-        chessboard.findAllMoves();
 
         //if you move a piece, all same-colored pawns are invulnerable to enPassant 
         //(except THIS piece if it is a pawn!)
@@ -45,7 +44,7 @@ class Piece {
                 }
             });
         }
-        
+
         //check for en-passant
         if (this instanceof Pawn) {
             if (this.color === 'white') {
@@ -105,15 +104,11 @@ class Piece {
                 if (this.currentChessTile.adjacentTile('right').adjacentTile('right') == chessTile) {
                     //moves kingside rook to correct location
                     this.currentChessTile.adjacentTile('right').adjacentTile('right').adjacentTile('right').piece.movePiece(this.currentChessTile.adjacentTile('right'));
-                    this.shortCastlingAvailable = false;
-                    this.longCastlingAvailable = false;
                 } else if (this.longCastlingAvailable === true) {
                     //long castle
                     if (this.currentChessTile.adjacentTile('left').adjacentTile('left') == chessTile) {
                         //moves queenside rook to correct location
                         this.currentChessTile.adjacentTile('left').adjacentTile('left').adjacentTile('left').adjacentTile('left').piece.movePiece(this.currentChessTile.adjacentTile('left'));
-                        this.shortCastlingAvailable = false;
-                        this.longCastlingAvailable = false;
                     }
                 }
             }
@@ -143,17 +138,129 @@ class Piece {
             }
         }
 
+        //---PIECE HAS NOW MOVED---
         this.currentChessTile = chessTile;
+
+        //king loses castling rights if it moved
+        if (this instanceof King) {
+            this.shortCastlingAvailable = false;
+            this.longCastlingAvailable = false;
+        }
+
         this.currentChessTile.piece = this;
         this.currentChessTile.piecePresent = true;
         this.validMoves = [];
         this.displayPiece();
         this.hasMoved = true;
+
+        //updates what this piece is controlling
+        this.updateAttackingSquares();
+
+        //refigures which pieces control which squares after each move
+        chessboard.findAllMoves();
+
+        //checks if opposing king is in check now
+        let opposingKing;
+        if (this.color === 'white') {
+            chessboard.blackPieces.forEach(piece => {
+                if (piece.name === 'King') {
+                    opposingKing = piece;
+                }
+            });
+            if (chessboard.whiteControlledTiles.includes(opposingKing.currentChessTile)) {
+                opposingKing.inCheck = true;
+            } else {
+                opposingKing.inCheck = false;
+            }
+        } else {
+            chessboard.whitePieces.forEach(piece => {
+                if (piece.name === 'King') {
+                    opposingKing = piece;
+                }
+            });
+            if (chessboard.blackControlledTiles.includes(opposingKing.currentChessTile)) {
+                opposingKing.inCheck = true;
+            } else {
+                opposingKing.inCheck = false;
+            }
+        }
     }
 
     initializePiece() {
         chessboard.pieces.push(this);
     }
+
+    ownKingInCheck() {
+        let inCheck;
+
+        //checks if opposing king is in check now
+        let sameKing;
+        if (this.color === 'white') {
+            chessboard.whitePieces.forEach(piece => {
+                if (piece.name === 'King') {
+                    sameing = piece;
+                }
+            });
+            if (chessboard.blackControlledTiles.includes(sameKing.currentChessTile)) {
+                sameKing.inCheck = true;
+                inCheck = true;
+            } else {
+                sameKing.inCheck = false;
+                inCheck = false;
+            }
+        } else {
+            chessboard.blackPieces.forEach(piece => {
+                if (piece.name === 'King') {
+                    sameKing = piece;
+                }
+            });
+            if (chessboard.whiteControlledTiles.includes(sameKing.currentChessTile)) {
+                sameKing.inCheck = true;
+                inCheck = true;
+            } else {
+                sameKing.inCheck = false;
+                inCheck = false;
+            }
+        }
+        return inCheck;
+    }
+
+    removeDuplicates(arr) {
+        arr.filter((item, index) => {arr.indexOf(item) !== index});
+    }  
+
+    illegalMoveChecker(arr) {
+        // const rememberImage = this.currentChessTile.image;
+        // const rememberPiece = this.currentChessTile.piece;
+        // const rememberPiecePresent = this.currentChessTile.piecePresent = false; 
+        
+
+        // let legal = true;
+
+        // arr.forEach(move => {
+        //     //simulate move
+        //     this.hidePiece();
+        //     this.currentChessTile.piece = null;
+        //     this.currentChessTile.piecePresent = false;
+
+        //     this.currentChessTile = move;
+        //     this.currentChessTile.piece = this;
+        //     this.currentChessTile.piecePresent = true;
+        //     this.validMoves = [];
+        //     this.displayPiece();
+        //     this.hasMoved = true;
+        //     this.hasMoved = true;
+
+        //     //updates what this piece is controlling
+        //     this.updateAttackingSquares();
+    
+        //     //refigures which pieces control which squares after each move
+        //     chessboard.findAllMoves();
+
+        // })
+        return arr;
+    }
+    
 }
 
 class Pawn extends Piece {
@@ -166,6 +273,7 @@ class Pawn extends Piece {
         this.vulnerableToEnPassant = false;
         this.justPerformedEnPassant = false;
         this.name = 'Pawn';
+        this.attackingSquares = [];
     }
 
     //finds all valid chess tiles to move to, returns array.
@@ -287,16 +395,43 @@ class Pawn extends Piece {
         this.validMoves = arr.filter((tile, index) => {
             return arr.indexOf(tile) === index;
         });
+
+        this.updateAttackingSquares();
         //console.log(this.validMoves);
         return this.validMoves;
     }
-}
+
+    updateAttackingSquares() {
+        this.attackingSquares = [];
+        let rightUp = this.currentChessTile.adjacentTile('up-right');
+        let leftUp = this.currentChessTile.adjacentTile('up-left');
+        let downRight = this.currentChessTile.adjacentTile('down-right');
+        let downLeft = this.currentChessTile.adjacentTile('down-left');
+
+        if (this.color === 'white') {
+            if (leftUp !== undefined) {
+                    this.attackingSquares.push(leftUp);
+            }
+            if (rightUp !== undefined) {
+                this.attackingSquares.push(rightUp);
+            }
+        } else {
+            if (downRight !== undefined) {
+                this.attackingSquares.push(downRight);
+                } 
+            if (downLeft !== undefined) {
+                    this.attackingSquares.push(downLeft);
+                }
+            }
+        }
+    }
 
 class Knight extends Piece {
     constructor(color, chessTile) {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-knight.png`;
         this.name = 'Knight'
+        this.attackingSquares = [];
     }
 
     findValidMoves() {
@@ -312,34 +447,34 @@ class Knight extends Piece {
         //make sure each square is defined on the board
         if (this.currentChessTile.adjacentTile('up-right') !== undefined) {
             if (this.currentChessTile.adjacentTile('up-right').adjacentTile('up') !== undefined) {
-                movesUpRight = [this.currentChessTile.adjacentTile('up-right').adjacentTile('up')];
+                movesUpRight = this.currentChessTile.adjacentTile('up-right').adjacentTile('up');
             }
             if (this.currentChessTile.adjacentTile('up-right').adjacentTile('right') !== undefined) {
-                movesRightUp = [this.currentChessTile.adjacentTile('up-right').adjacentTile('right')];
+                movesRightUp = this.currentChessTile.adjacentTile('up-right').adjacentTile('right');
             }
         }
         if (this.currentChessTile.adjacentTile('down-right') !== undefined) {
             if (this.currentChessTile.adjacentTile('down-right').adjacentTile('right') !== undefined) {
-                movesRightDown = [this.currentChessTile.adjacentTile('down-right').adjacentTile('right')];
+                movesRightDown = this.currentChessTile.adjacentTile('down-right').adjacentTile('right');
             }
             if (this.currentChessTile.adjacentTile('down-right').adjacentTile('down') !== undefined) {
-                movesDownRight = [this.currentChessTile.adjacentTile('down-right').adjacentTile('down')];
+                movesDownRight = this.currentChessTile.adjacentTile('down-right').adjacentTile('down');
             }
         }
         if (this.currentChessTile.adjacentTile('down-left') !== undefined) {
             if (this.currentChessTile.adjacentTile('down-left').adjacentTile('down') !== undefined) {
-                movesDownLeft = [this.currentChessTile.adjacentTile('down-left').adjacentTile('down')];
+                movesDownLeft = this.currentChessTile.adjacentTile('down-left').adjacentTile('down');
             }
             if (this.currentChessTile.adjacentTile('down-left').adjacentTile('left') !== undefined) {
-                movesLeftDown = [this.currentChessTile.adjacentTile('down-left').adjacentTile('left')];
+                movesLeftDown = this.currentChessTile.adjacentTile('down-left').adjacentTile('left');
             }
         }
         if (this.currentChessTile.adjacentTile('up-left') !== undefined) {
             if (this.currentChessTile.adjacentTile('up-left').adjacentTile('left') !== undefined) {
-                movesLeftUp = [this.currentChessTile.adjacentTile('up-left').adjacentTile('left')];
+                movesLeftUp = this.currentChessTile.adjacentTile('up-left').adjacentTile('left');
             }
             if (this.currentChessTile.adjacentTile('up-left').adjacentTile('up') !== undefined) {
-                movesUpLeft = [this.currentChessTile.adjacentTile('up-left').adjacentTile('up')];
+                movesUpLeft = this.currentChessTile.adjacentTile('up-left').adjacentTile('up');
             }
         }
 
@@ -351,23 +486,32 @@ class Knight extends Piece {
             };
         })
 
+        //we want our attacking squares to include same color
+        this.attackingSquares = [];
+        arr.forEach(element => {
+           this.attackingSquares.push(element);
+        })
+
         //gets rid of same color pieces
         let arr2 = [];
         arr.filter(element => {
             //if empty square, good
-            if (element[0].piece === null) {
-                arr2.push(element[0]);
+            if (element.piece === null) {
+                arr2.push(element);
 
             //if opponent piece, good
-            } else if (element[0].piece.color !== this.color) {
-                arr2.push(element[0]);
+            } else if (element.piece.color !== this.color) {
+                arr2.push(element);
             }
         });
 
         this.validMoves = arr2;
-        
         //console.log(this.validMoves);
         return this.validMoves;
+    }
+
+    updateAttackingSquares() {
+        this.findValidMoves();
     }
 }
 
@@ -376,6 +520,7 @@ class Bishop extends Piece {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-bishop.png`;
         this.name = 'Bishop';
+        this.attackingSquares = [];
     }
 
     findValidMoves() {
@@ -517,8 +662,15 @@ class Bishop extends Piece {
             }
         }
 
+
+
         let tempArray = [];
         this.validMoves = tempArray.concat(movesUpRightPass, movesUpLeftPass, movesDownRightPass, movesDownLeftPass);
+        
+        //get controlling squares
+        tempArray = [];
+        this.attackingSquares = [];
+        this.attackingSquares = tempArray.concat(movesUpRightPass, movesUpLeftPass, movesDownRightPass, movesDownLeftPass);
 
         //gets rid of same color pieces
         let arr = [];
@@ -535,9 +687,12 @@ class Bishop extends Piece {
         });
 
         this.validMoves = arr;
-        //console.log(this.validMoves);
         return this.validMoves;
 
+    }
+
+    updateAttackingSquares() {
+        this.findValidMoves();
     }
 }
 
@@ -546,6 +701,7 @@ class Rook extends Piece {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-rook.png`;
         this.name = 'Rook';
+        this.attackingSquares = [];
     }
 
     findValidMoves() {
@@ -689,7 +845,10 @@ class Rook extends Piece {
         }
         let tempArray = [];
         this.validMoves = tempArray.concat(movesUpPass, movesLeftPass, movesDownPass, movesRightPass);
-
+        tempArray = [];
+        this.attackingSquares = [];
+        this.attackingSquares = tempArray.concat(movesUpPass, movesLeftPass, movesDownPass, movesRightPass);
+        
         //gets rid of same color pieces
         let arr = [];
         this.validMoves.filter(element => {
@@ -708,6 +867,10 @@ class Rook extends Piece {
         //console.log(this.validMoves);
         return this.validMoves;
     }
+
+    updateAttackingSquares() {
+        this.findValidMoves();
+    }
 }
 
 class Queen extends Piece {
@@ -715,6 +878,7 @@ class Queen extends Piece {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-queen.png`;
         this.name = 'Queen';
+        this.attackingSquares = [];
     }
 
     findValidMoves() {
@@ -990,7 +1154,9 @@ class Queen extends Piece {
 
         let tempArray = [];
         this.validMoves = tempArray.concat(movesUpPass, movesRightPass, movesDownPass, movesLeftPass, movesUpRightPass, movesUpLeftPass, movesDownRightPass, movesDownLeftPass);
-        
+        tempArray = [];
+        this.attackingSquares = tempArray.concat(movesUpPass, movesRightPass, movesDownPass, movesLeftPass, movesUpRightPass, movesUpLeftPass, movesDownRightPass, movesDownLeftPass);
+
         let arr = [];
         this.validMoves.filter(element => {
 
@@ -1005,10 +1171,11 @@ class Queen extends Piece {
         });
 
         this.validMoves = arr;
-        //console.log(this.validMoves);
-        
         return this.validMoves;
+    }
 
+    updateAttackingSquares() {
+        this.findValidMoves();
     }
 }
 
@@ -1020,6 +1187,7 @@ class King extends Piece {
         this.longCastlingAvailable = true;
         this.inCheck = false;
         this.name = 'King';
+        this.attackingSquares = [];
     }
 
     findValidMoves() {
@@ -1033,12 +1201,16 @@ class King extends Piece {
         let downLeft = this.currentChessTile.adjacentTile('down-left');
         let left = this.currentChessTile.adjacentTile('left');
         let upLeft = this.currentChessTile.adjacentTile('up-left');
-
+        
         let avail = [up, upRight, right, downRight, down, downLeft, left, upLeft];
 
         avail = avail.filter(element => {
             return element !== undefined
         });
+
+        //get attacking squares
+        this.attackingSquares = [];
+        this.attackingSquares = avail;
 
         for (let i = 0; i < avail.length; i++) {
             if (avail[i].piecePresent === false || (avail[i].piecePresent === true && avail[i].color != this.color)) {
@@ -1058,8 +1230,7 @@ class King extends Piece {
                 arr.push(element);
             }
         });
-
-
+        
         //allows castling 
         //if king hasn't moved
         if (this.hasMoved === false) {
@@ -1088,11 +1259,29 @@ class King extends Piece {
         }
     
         this.validMoves = arr.filter((tile, index) => {
-            return arr.indexOf(tile) === index;
+             return arr.indexOf(tile) === index;
         });
+
+        //remove moves that go into check
+        if (this.color === 'white') {
+            this.validMoves = this.validMoves.filter(move => {
+                if (!chessboard.blackControlledTiles.includes(move)) {
+                    return move;
+                }
+            });
+        } else {
+            this.validMoves = this.validMoves.filter(move => {
+                if (!chessboard.whiteControlledTiles.includes(move)) {
+                    return move;
+                }
+            });
+        }
         
-        //console.log(this.validMoves);
         return this.validMoves;
+    }
+
+    updateAttackingSquares() {
+        this.findValidMoves();
     }
 }
 
@@ -1114,7 +1303,9 @@ function chessTile(name, color) {
         this.piecePresent = true;
     }
 
+    this.controlledBySelectedPiece = false;
     this.piece = null;
+    this.attackingSquares = [];
 }
 
 chessTile.prototype.updateImg = function() {
@@ -1214,18 +1405,19 @@ class Chessboard {
         this.blackControlledTiles = [];
 
         chessboard.whitePieces.forEach(piece => {
-            this.whiteControlledTiles.push(piece.findValidMoves());
+            piece.updateAttackingSquares()
+            this.whiteControlledTiles.push(piece.attackingSquares);
         });
 
         chessboard.blackPieces.forEach(piece => {
-            this.whiteControlledTiles.push(piece.findValidMoves());
+            piece.updateAttackingSquares()
+            this.blackControlledTiles.push(piece.attackingSquares);
         });
 
         //flatten arrays
         this.whiteControlledTiles = this.whiteControlledTiles.flat();
         this.blackControlledTiles = this.blackControlledTiles.flat();
     }
-
 }
 
 function initChessboard() {
@@ -1364,14 +1556,28 @@ document.addEventListener('click', function(e) {
                 if (tile.piece !== null && chessboard.whitePieces.includes(tile.piece)) {
                     displayFeedback('Moving Phase:')
                     piece = tile.piece;
-                    console.log(piece.findValidMoves());
+                    piece.illegalMoveChecker(piece.findValidMoves());
+
+                    highlightAttackedSquares(piece, piece.validMoves);
+
+                    //debugging
+                    //console.log(piece.validMoves);
+                    //console.log(piece.attackingSquares);
+
                     selectingOrMoving = !selectingOrMoving;
                 }
             } else {
                 if (tile.piece !== null && chessboard.blackPieces.includes(tile.piece)) {
                     displayFeedback('Moving Phase:')
                     piece = tile.piece;
-                    console.log(piece.findValidMoves());
+                    piece.illegalMoveChecker(piece.findValidMoves());
+
+                    highlightAttackedSquares(piece, piece.validMoves);
+
+                    //debugging
+                    //console.log(piece.validMoves);
+                    //console.log(piece.attackingSquares);
+
                     selectingOrMoving = !selectingOrMoving;
                 }
             }
@@ -1381,15 +1587,17 @@ document.addEventListener('click', function(e) {
         } else {
             selectingOrMoving = !selectingOrMoving;
             tile = chessboard.board[id[0]][id[1]];
-            let validMove = piece.findValidMoves().includes(tile);
-            if (validMove) {
+            if (piece.illegalMoveChecker(piece.findValidMoves()).includes(tile)) {
                 piece.movePiece(chessboard.board[id[0]][id[1]]);
+
                 turn = !turn;
                 displayTurn(turn);
             }
-            displayFeedback('Selecting Phase');
-             
 
+            //always remove visual cues when we go back to selecting phase
+            makeAllEmptyTilesBlank()
+
+            displayFeedback('Selecting Phase');
         }  
     } else {
         selectingOrMoving = false;
@@ -1399,7 +1607,7 @@ document.addEventListener('click', function(e) {
 
 //our output for user feedback
 function displayFeedback(str) {
-    document.getElementById('user-feedback').innerHTML = str;
+    document.getElementById('phase-information').innerHTML = str;
 }
 
 function displayTurn(boolean) {
@@ -1412,3 +1620,34 @@ function displayTurn(boolean) {
     chessboard.findAllMoves()
 }
 
+function makeAllEmptyTilesBlank() {
+
+    //de-colors the board tiles
+    for (let col = 0; col < 8; col++) {
+        for (let row = 0; row < 8; row++) {
+            if (chessboard.board[col][row].white === true) {
+                chessboard.board[col][row].htmlElement.style.backgroundColor = "#fffff0";
+            } else {
+                chessboard.board[col][row].htmlElement.style.backgroundColor = "#118ab2";
+            }
+
+            document.getElementById(chessboard.board[col][row].name).style.borderRadius = "0px";
+
+            if (chessboard.board[col][row].piece === null) {
+                document.getElementById(`${chessboard.board[col][row].name}-img`).src =  'images/placeholder.png';
+            } else {
+            }
+        }
+    }
+}
+
+function highlightAttackedSquares(piece, arrOfMoves) {
+    arrOfMoves.forEach(validMove => {
+        if (validMove.piece === null) {
+            document.getElementById(`${validMove.name}-img`).src =  'images/validMoveDot.png';
+        } else {
+            document.getElementById(validMove.name).style.borderRadius = "25px";
+            //document.getElementById(validMove.name).style.backgroundColor = "red";
+        }
+    })
+}

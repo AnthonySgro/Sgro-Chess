@@ -22,7 +22,7 @@ img {
 .sgrochess {
     background-color: #ffd166;
     border-radius: 10px;
-    padding: 25px 25px;
+    padding: 25px 25px 10px 25px;
     max-width: 532px;
     flex-direction: column;
     text-align: center;
@@ -37,6 +37,10 @@ img {
     /* border-collapse: collapse;
     border-spacing: 0; */
     border: 1px #073b4c;
+}
+
+#chessboard-backdrop {
+    background-color: #ef476f;
 }
 
 .chessboard td{
@@ -61,7 +65,7 @@ img {
     vertical-align: top;
 }
 
-.btn {
+.greenbtn {
     box-shadow: 0 7px 10px -9px rgba(0,0,0,0.62);
     background-color: #06d6a0;
     border: 1px solid transparent;
@@ -73,7 +77,19 @@ img {
     width: 20%;
 }
 
-#user-feedback, #turn-information {
+.redbtn {
+    box-shadow: 0 7px 10px -9px rgba(0,0,0,0.62);
+    background-color: #ef476f;
+    border: 1px solid transparent;
+    border-radius: 50px;
+    color: #f1faee;
+    outline: none;
+    padding: 5px 10px; 
+    margin: 0px;
+    width: 10%;
+}
+
+#phase-information, #turn-information {
     box-shadow: 0 7px 10px -9px rgba(0,0,0,0.62);
     background-color: #f1faee;
     border: 1px solid transparent;
@@ -83,6 +99,22 @@ img {
     padding: 0px 0px;
     margin: 10px;
     width: 20%;
+    display: inline-block;
+    overflow-wrap: break-word;
+    font-size: 8px;
+}
+
+#user-feedback {
+    box-shadow: 0 7px 10px -9px rgba(0,0,0,0.62);
+    background-color: #f1faee;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    color: black;
+    outline: none;
+    padding: 0px 0px;
+    margin: 0px;
+    height: 40px;
+    width: 40%;
     display: inline-block;
     overflow-wrap: break-word;
     font-size: 8px;
@@ -98,10 +130,28 @@ img {
     cursor: pointer;
 }
 
-.btn:active {
+.greenbtn:hover {
+    transition: background-color 200ms ease-in-out;
+    background-color: #05a77c;
+    cursor: pointer;
+}
+
+.redbtn:hover {
+    transition: background-color 200ms ease-in-out;
+    background-color: #cc3b5d;
+    cursor: pointer;
+}
+
+.greenbtn:active {
     transition: background-color 0ms;
     transform: translateY(0.1em);
-    background-color: #048b67;
+    background-color: #047758;
+}
+
+.redbtn:active {
+    transition: background-color 0ms;
+    transform: translateY(0.1em);
+    background-color: #8f2840;
 }
 
 .chessboard td:active, .chessboard th:active  {
