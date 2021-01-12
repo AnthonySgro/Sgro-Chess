@@ -24,6 +24,7 @@ class Piece {
     }
 
     movePiece(chessTile) {
+        chessboard.findAllMoves();
 
         //if you move a piece, all same-colored pawns are invulnerable to enPassant 
         //(except THIS piece if it is a pawn!)
@@ -49,20 +50,47 @@ class Piece {
         if (this instanceof Pawn) {
             if (this.color === 'white') {
 
-                //check for enPassant Vulnerability
+                //check for white enPassant Vulnerability
                 if (this.currentChessTile.numCoord[1] === 1 && chessTile.numCoord[1] === 3) {
                     this.vulnerableToEnPassant = true;
                 } else {
                     this.vulnerableToEnPassant = false;
                 }
+
+                //checks if doing en-passant for white
+                if (chessTile.numCoord[1] - 1 === this.currentChessTile.numCoord[1]) {
+                    if (chessTile.numCoord[0] - 1 === this.currentChessTile.numCoord[0] || chessTile.numCoord[0] + 1 === this.currentChessTile.numCoord[0]) {
+                        if (chessTile.piecePresent === false) {
+                            chessTile.adjacentTile('down').piece.hidePiece();
+                            chessboard.whitePieces.splice(chessboard.whitePieces.indexOf(chessTile.adjacentTile('down').piece), 1);
+                            chessTile.adjacentTile('down').piece = null;
+                            chessTile.adjacentTile('down').piecePresent = false;
+                            chessboard.updatePieces();
+                        }
+                    }
+                }
             } else {
+
+                //check for black enPassant Vulnerability
                 if (this.currentChessTile.numCoord[1] === 6 && chessTile.numCoord[1] === 4) {
                     this.vulnerableToEnPassant = true;
                 } else {
                     this.vulnerableToEnPassant = false;
                 }
+
+                //checks if doing en-passant for black
+                if (chessTile.numCoord[1] + 1 === this.currentChessTile.numCoord[1]) {
+                    if (chessTile.numCoord[0] - 1 === this.currentChessTile.numCoord[0] || chessTile.numCoord[0] + 1 === this.currentChessTile.numCoord[0]) {
+                        if (chessTile.piecePresent === false) {
+                            chessTile.adjacentTile('up').piece.hidePiece();
+                            chessboard.blackPieces.splice(chessboard.whitePieces.indexOf(chessTile.adjacentTile('up').piece), 1);
+                            chessTile.adjacentTile('up').piece = null;
+                            chessTile.adjacentTile('up').piecePresent = false;
+                            chessboard.updatePieces();
+                        }
+                    }
+                }
             }
-            console.log(this.vulnerableToEnPassant);
         }
 
         //remove piece from this square
@@ -137,6 +165,7 @@ class Pawn extends Piece {
         this.justMovedTwo = false;
         this.vulnerableToEnPassant = false;
         this.justPerformedEnPassant = false;
+        this.name = 'Pawn';
     }
 
     //finds all valid chess tiles to move to, returns array.
@@ -267,6 +296,7 @@ class Knight extends Piece {
     constructor(color, chessTile) {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-knight.png`;
+        this.name = 'Knight'
     }
 
     findValidMoves() {
@@ -345,6 +375,7 @@ class Bishop extends Piece {
     constructor(color, chessTile) {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-bishop.png`;
+        this.name = 'Bishop';
     }
 
     findValidMoves() {
@@ -514,6 +545,7 @@ class Rook extends Piece {
     constructor(color, chessTile) {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-rook.png`;
+        this.name = 'Rook';
     }
 
     findValidMoves() {
@@ -682,6 +714,7 @@ class Queen extends Piece {
     constructor(color, chessTile) {
         super(color, chessTile)
         this.imageFile = `images/${this.color}-queen.png`;
+        this.name = 'Queen';
     }
 
     findValidMoves() {
@@ -985,6 +1018,8 @@ class King extends Piece {
         this.imageFile = `images/${this.color}-king.png`;
         this.shortCastlingAvailable = true;
         this.longCastlingAvailable = true;
+        this.inCheck = false;
+        this.name = 'King';
     }
 
     findValidMoves() {
@@ -1130,6 +1165,8 @@ class Chessboard {
         this.whitePieces = [];
         this.blackPieces = [];
         this.pieces = [];
+        this.whiteControlledTiles = [];
+        this.blackControlledTiles = [];
     }
 
     generateBoard() {
@@ -1171,6 +1208,24 @@ class Chessboard {
         this.pieces = [];
         this.pieces = this.pieces.concat(this.whitePieces, this.blackPieces);
     }
+
+    findAllMoves() {
+        this.whiteControlledTiles = [];
+        this.blackControlledTiles = [];
+
+        chessboard.whitePieces.forEach(piece => {
+            this.whiteControlledTiles.push(piece.findValidMoves());
+        });
+
+        chessboard.blackPieces.forEach(piece => {
+            this.whiteControlledTiles.push(piece.findValidMoves());
+        });
+
+        //flatten arrays
+        this.whiteControlledTiles = this.whiteControlledTiles.flat();
+        this.blackControlledTiles = this.blackControlledTiles.flat();
+    }
+
 }
 
 function initChessboard() {
@@ -1289,6 +1344,7 @@ enterInitBtn.addEventListener('click', function() {
 let selectingOrMoving = false;
 let tile;
 let piece;
+let turn = true
 
 //moving pieces!
 document.addEventListener('click', function(e) {
@@ -1304,12 +1360,22 @@ document.addEventListener('click', function(e) {
 
             //grab tile: if piece, hold onto it and change phase. if not, dont do anything.
             tile = chessboard.board[id[0]][id[1]]
-            if (tile.piece != null) {
-                displayFeedback('Moving Phase:')
-                piece = tile.piece;
-                console.log(piece.findValidMoves());
-                selectingOrMoving = !selectingOrMoving;
+            if (turn === true) {
+                if (tile.piece !== null && chessboard.whitePieces.includes(tile.piece)) {
+                    displayFeedback('Moving Phase:')
+                    piece = tile.piece;
+                    console.log(piece.findValidMoves());
+                    selectingOrMoving = !selectingOrMoving;
+                }
+            } else {
+                if (tile.piece !== null && chessboard.blackPieces.includes(tile.piece)) {
+                    displayFeedback('Moving Phase:')
+                    piece = tile.piece;
+                    console.log(piece.findValidMoves());
+                    selectingOrMoving = !selectingOrMoving;
+                }
             }
+            
 
         //if moving phase, move piece to wherever you clicked
         } else {
@@ -1318,6 +1384,8 @@ document.addEventListener('click', function(e) {
             let validMove = piece.findValidMoves().includes(tile);
             if (validMove) {
                 piece.movePiece(chessboard.board[id[0]][id[1]]);
+                turn = !turn;
+                displayTurn(turn);
             }
             displayFeedback('Selecting Phase');
              
@@ -1332,5 +1400,15 @@ document.addEventListener('click', function(e) {
 //our output for user feedback
 function displayFeedback(str) {
     document.getElementById('user-feedback').innerHTML = str;
+}
+
+function displayTurn(boolean) {
+    if (boolean) {
+        document.getElementById('turn-information').innerHTML = "White's Turn";
+
+    } else {
+        document.getElementById('turn-information').innerHTML = "Black's Turn";
+    }
+    chessboard.findAllMoves()
 }
 
