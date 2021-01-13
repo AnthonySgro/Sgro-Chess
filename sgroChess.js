@@ -20,7 +20,7 @@ class Piece {
     }
 
     hidePiece() {
-        document.getElementById(`${this.currentChessTile.name}-img`).src =  'images/placeholder.png';
+        document.getElementById(`${piece.currentChessTile.name}-img`).src =  'images/placeholder.png';
     }
 
     movePiece(chessTile) {
@@ -136,6 +136,12 @@ class Piece {
                 queenedPawn.hasMoved = true;
                 return;
             }
+        }
+
+        //check if piece is on the tile you are moving to
+        //if yes, remove it
+        if (chessTile.piecePresent) {
+            chessboard.removePiece(chessTile.piece);
         }
 
         //---PIECE HAS NOW MOVED---
@@ -1285,7 +1291,7 @@ class King extends Piece {
     }
 }
 
-function chessTile(name, color) {
+function chessTile(name, color, chessboard) {
     this.name = name;
     this.white = color;
     this.column = name[0];
@@ -1306,6 +1312,7 @@ function chessTile(name, color) {
     this.controlledBySelectedPiece = false;
     this.piece = null;
     this.attackingSquares = [];
+    this.chessboard = chessboard;
 }
 
 chessTile.prototype.updateImg = function() {
@@ -1373,7 +1380,7 @@ class Chessboard {
                 let letterCol = String.fromCharCode(97 + i);
                 let chessTileName = letterCol + j;
                 tileNameGen.push(chessTileName);
-                tileNameGen[0] = new chessTile(chessTileName, color);
+                tileNameGen[0] = new chessTile(chessTileName, color, this);
                 boardRow.push(tileNameGen[0]);
                 tileNameGen.pop()
                 color = !color;
@@ -1417,6 +1424,18 @@ class Chessboard {
         //flatten arrays
         this.whiteControlledTiles = this.whiteControlledTiles.flat();
         this.blackControlledTiles = this.blackControlledTiles.flat();
+    }
+
+    removePiece(piece) {
+        document.getElementById(`${piece.currentChessTile.name}-img`).src =  'images/placeholder.png';
+        piece.currentChessTile = null;
+        piece.validMoves = [];
+        if (piece.color === 'white') {
+            this.whitePieces.splice(this.whitePieces.indexOf(piece), 1);
+        } else {
+            this.blackPieces.splice(this.blackPieces.indexOf(piece), 1);
+        }
+        this.updatePieces();
     }
 }
 

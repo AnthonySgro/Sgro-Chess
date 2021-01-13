@@ -27,6 +27,7 @@ img {
     flex-direction: column;
     text-align: center;
     text-transform: uppercase;
+    box-shadow: 0 14px 12px -11px #04232e93;
 }
 
 .chessboard-container {
