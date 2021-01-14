@@ -4,3 +4,5 @@ It'll be mostly useless since there are many great chess apps out there, but thi
 I will flesh it out more as I keep learning more about developing in Javascript, HTML, and CSS.
 
 - Anthony
+
+![image](https://user-images.githubusercontent.com/64649626/104653971-63cfc080-5689-11eb-8e53-9404fd4b78cc.png)
